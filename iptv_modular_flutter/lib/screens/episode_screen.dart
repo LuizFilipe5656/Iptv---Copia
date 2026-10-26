@@ -1,0 +1,215 @@
+import 'dart:convert';
+
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+
+import '../models/stremio_meta_item.dart';
+import '../models/movie.dart';
+import '../repositories/addon_repository.dart';
+import '../repositories/stream_repository.dart';
+import '../services/cinemeta_service.dart';
+import '../services/playback_progress_service.dart';
+import 'stream_sources_sheet.dart';
+import 'search_screen.dart';
+
+class EpisodeScreen extends StatelessWidget {
+  const EpisodeScreen({
+    super.key,
+    required this.series,
+    required this.episode,
+    this.nextEpisode,
+    this.allEpisodes,
+    this.addonRepository,
+    this.streamRepository,
+    this.playbackProgressService,
+  });
+
+  final Movie series;
+  final SeriesEpisode episode;
+  final SeriesEpisode? nextEpisode;
+  final List<SeriesEpisode>? allEpisodes;
+  final AddonRepository? addonRepository;
+  final StreamRepository? streamRepository;
+  final PlaybackProgressService? playbackProgressService;
+
+  @override
+  Widget build(BuildContext context) {
+    final addons = addonRepository;
+    final streams = streamRepository;
+    if (addons != null && streams != null) {
+      return Scaffold(
+        appBar: AppBar(title: Text(episode.title)),
+        body: ListView(
+          padding: const EdgeInsets.all(20),
+          children: [
+            if (episode.thumbnailUrl != null) ...[
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.network(
+                  episode.thumbnailUrl!,
+                  height: 210,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => const SizedBox(height: 16),
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+            Text(series.title, style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 8),
+            Text(
+              [
+                if (episode.season == 0)
+                  'Especial'
+                else
+                  'Temporada ${episode.season}',
+                'Episódio ${episode.episode.toString().padLeft(2, '0')}',
+                if (episode.runtime?.isNotEmpty == true) episode.runtime!,
+              ].join(' · '),
+            ),
+            if (episode.overview.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              Text(episode.overview),
+            ],
+            const SizedBox(height: 24),
+            FilledButton.icon(
+              onPressed: () => _selectSource(context, addons, streams),
+              icon: const Icon(Icons.play_circle_outline),
+              label: const Text('Selecionar fonte'),
+            ),
+          ],
+        ),
+      );
+    }
+    return SearchScreen(
+      initialQuery: '${series.title} ${episode.title}',
+      autoSearch: false,
+    );
+  }
+
+  Future<void> _selectSource(
+    BuildContext context,
+    AddonRepository addons,
+    StreamRepository streams, {
+    SeriesEpisode? selectedEpisode,
+  }) async {
+    final targetEpisode = selectedEpisode ?? episode;
+    final followingEpisode = _followingEpisode(targetEpisode);
+    try {
+      final installed = await addons.getInstalledAddons();
+      if (!context.mounted) return;
+      final seriesId = await _resolveStreamSeriesId();
+      debugPrint('========== CINE MOBILE ==========');
+      debugPrint('Serie: ${series.title}');
+      debugPrint('ID original: ${series.id}');
+      debugPrint('IMDB ID: ${series.imdbId}');
+      debugPrint('ID utilizado: $seriesId');
+      debugPrint('Temporada: ${targetEpisode.season}');
+      debugPrint('Episodio: ${targetEpisode.episode}');
+      debugPrint(
+          'ID Stremio: $seriesId:${targetEpisode.season}:${targetEpisode.episode}');
+      debugPrint('=================================');
+      final upcomingEpisode = followingEpisode;
+      await showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        builder: (_) => StremioSourcesSheet(
+          item: StremioMetaItem(
+            id: '$seriesId:${targetEpisode.season}:${targetEpisode.episode}',
+            type: 'series',
+            name: '${series.title} · ${targetEpisode.title}',
+            poster: series.posterUrl,
+          ),
+          addons: installed,
+          repository: streams,
+          playbackContentId: series.id,
+          contentTitle: series.title,
+          season: targetEpisode.season,
+          episode: targetEpisode.episode,
+          episodeTitle: targetEpisode.title,
+          posterUrl: series.posterUrl,
+          progressService: playbackProgressService,
+          nextEpisodeTitle: upcomingEpisode?.title,
+          onNextEpisode: upcomingEpisode == null
+              ? null
+              : () => _selectSource(
+                    context,
+                    addons,
+                    streams,
+                    selectedEpisode: upcomingEpisode,
+                  ),
+        ),
+      );
+    } catch (error) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Falha ao carregar fontes: $error')),
+        );
+      }
+    }
+  }
+
+  Future<String> _resolveStreamSeriesId() async {
+    final originalId = series.id;
+    final imdbId = series.imdbId;
+    final imdbPattern = RegExp(r'^tt\d+$', caseSensitive: false);
+
+    if (imdbId != null && imdbPattern.hasMatch(imdbId.trim())) {
+      return imdbId.trim();
+    }
+    if (imdbPattern.hasMatch(originalId.trim())) {
+      return originalId.trim();
+    }
+
+    final tvmazeMatch = RegExp(r'^tvmaze:(\d+)$').firstMatch(originalId);
+    if (tvmazeMatch == null) {
+      debugPrint(
+          '[cine] Sem IMDb confirmado para ${series.title}; usando $originalId');
+      return originalId;
+    }
+
+    try {
+      final uri = Uri.https(
+        'api.tvmaze.com',
+        '/shows/${tvmazeMatch.group(1)}',
+      );
+      final response = await http.get(uri).timeout(const Duration(seconds: 12));
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(utf8.decode(response.bodyBytes));
+        if (decoded is Map<String, dynamic>) {
+          final externals = decoded['externals'];
+          if (externals is Map) {
+            final candidate = externals['imdb']?.toString().trim();
+            if (candidate != null && imdbPattern.hasMatch(candidate)) {
+              debugPrint('[cine] TVMaze $originalId -> IMDb $candidate');
+              return candidate;
+            }
+          }
+        }
+      }
+      debugPrint(
+          '[cine] TVMaze sem IMDb confirmado para $originalId (HTTP ${response.statusCode})');
+    } catch (error) {
+      debugPrint('[cine] Falha ao consultar IMDb de $originalId: $error');
+    }
+    return originalId;
+  }
+
+  SeriesEpisode? _followingEpisode(SeriesEpisode target) {
+    final orderedEpisodes = [...?allEpisodes]..sort((first, second) {
+        final seasonOrder = first.season.compareTo(second.season);
+        return seasonOrder != 0
+            ? seasonOrder
+            : first.episode.compareTo(second.episode);
+      });
+    if (orderedEpisodes.isEmpty) {
+      return target == episode ? nextEpisode : null;
+    }
+    final index = orderedEpisodes.indexWhere(
+      (item) => item.season == target.season && item.episode == target.episode,
+    );
+    return index >= 0 && index + 1 < orderedEpisodes.length
+        ? orderedEpisodes[index + 1]
+        : null;
+  }
+}

@@ -1,0 +1,670 @@
+import 'package:flutter/material.dart';
+
+import '../models/addon.dart';
+import '../models/stremio_addon_manifest.dart';
+import '../models/stremio_meta_item.dart';
+import '../repositories/addon_repository.dart';
+import '../repositories/catalog_repository.dart';
+import '../repositories/stream_repository.dart';
+import 'stremio_details_screen.dart';
+import 'stream_sources_sheet.dart';
+
+enum AddonCategory {
+  movies,
+  series,
+  anime,
+  cartoons,
+  doramas,
+}
+
+class AddonCategoryScreen extends StatefulWidget {
+  const AddonCategoryScreen({
+    super.key,
+    required this.category,
+    this.addonRepository,
+    this.catalogRepository,
+    this.streamRepository,
+  });
+
+  final AddonCategory category;
+  final AddonRepository? addonRepository;
+  final CatalogRepository? catalogRepository;
+  final StreamRepository? streamRepository;
+
+  @override
+  State<AddonCategoryScreen> createState() => _AddonCategoryScreenState();
+}
+
+class _CatalogEntry {
+  const _CatalogEntry({
+    required this.addon,
+    required this.item,
+  });
+
+  final Addon addon;
+  final StremioMetaItem item;
+}
+
+class _AddonCategoryScreenState extends State<AddonCategoryScreen> {
+  static const cyan = Color(0xFF29B6F6);
+  static const background = Color(0xFF07101F);
+
+  late final AddonRepository addons =
+      widget.addonRepository ?? AddonRepository();
+
+  late final CatalogRepository catalogs =
+      widget.catalogRepository ?? CatalogRepository();
+
+  late final StreamRepository streams =
+      widget.streamRepository ?? StreamRepository(addonRepository: addons);
+
+  final List<_CatalogEntry> items = [];
+  final Set<String> seen = {};
+
+  bool loading = false;
+  int failures = 0;
+  int checkedCatalogs = 0;
+  int generation = 0;
+
+  String get title => switch (widget.category) {
+        AddonCategory.movies => 'Filmes',
+        AddonCategory.series => 'Séries',
+        AddonCategory.anime => 'Animes',
+        AddonCategory.cartoons => 'Desenhos',
+        AddonCategory.doramas => 'Doramas',
+      };
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  @override
+  void dispose() {
+    generation++;
+    if (widget.addonRepository == null) addons.close();
+    if (widget.catalogRepository == null) catalogs.close();
+    if (widget.streamRepository == null) streams.close();
+    super.dispose();
+  }
+
+  String normalize(String value) {
+    return value
+        .toLowerCase()
+        .replaceAll(RegExp('[áàâãä]'), 'a')
+        .replaceAll(RegExp('[éèêë]'), 'e')
+        .replaceAll(RegExp('[íìîï]'), 'i')
+        .replaceAll(RegExp('[óòôõö]'), 'o')
+        .replaceAll(RegExp('[úùûü]'), 'u')
+        .replaceAll('ç', 'c');
+  }
+
+  bool hasAny(String value, List<String> terms) {
+    final text = normalize(value);
+    return terms.any((term) => text.contains(term));
+  }
+
+  bool isAnime(String text) => hasAny(text, [
+        'anime',
+        'animes',
+        'japanese animation',
+        'animacao japonesa',
+        'myanimelist',
+        'anilist',
+      ]);
+
+  bool isCartoon(String text) => hasAny(text, [
+        'cartoon',
+        'cartoons',
+        'animation',
+        'animated',
+        'animacao',
+        'desenho',
+        'desenhos',
+        'kids',
+        'infantil',
+      ]);
+
+  bool isDorama(String text) => hasAny(text, [
+        'dorama',
+        'doramas',
+        'k-drama',
+        'kdrama',
+        'j-drama',
+        'jdrama',
+        'c-drama',
+        'cdrama',
+        'korean drama',
+        'japanese drama',
+        'chinese drama',
+        'drama coreano',
+        'drama japones',
+        'drama chines',
+        'asian drama',
+        'drama asiatico',
+      ]);
+
+  bool isMovie(String type) =>
+      normalize(type) == 'movie' || normalize(type) == 'film';
+
+  bool isSeries(String type) =>
+      normalize(type) == 'series' ||
+      normalize(type) == 'tv' ||
+      normalize(type) == 'show';
+
+  bool catalogIsRelevant(
+    Addon addon,
+    StremioCatalog catalog,
+  ) {
+    final type = normalize(catalog.type);
+
+    if (!isMovie(type) &&
+        !isSeries(type) &&
+        type != 'anime' &&
+        type != 'channel') {
+      return false;
+    }
+
+    if (type == 'channel') return false;
+
+    final label = '${catalog.name} ${catalog.id} '
+        '${addon.name}';
+
+    final anime = isAnime(label);
+    final cartoon = isCartoon(label);
+    final dorama = isDorama(label);
+
+    switch (widget.category) {
+      case AddonCategory.anime:
+        return type == 'anime' || anime || isMovie(type) || isSeries(type);
+
+      case AddonCategory.cartoons:
+        return cartoon || isMovie(type) || isSeries(type);
+
+      case AddonCategory.doramas:
+        return dorama || isSeries(type);
+
+      case AddonCategory.movies:
+        return isMovie(type);
+
+      case AddonCategory.series:
+        return isSeries(type);
+    }
+  }
+
+  bool matches(
+    Addon addon,
+    StremioCatalog catalog,
+    StremioMetaItem item,
+  ) {
+    final label = '${addon.name} ${catalog.name} '
+        '${catalog.id}';
+
+    final metadata = '${item.name} '
+        '${item.genres.join(' ')} '
+        '${item.type}';
+
+    final anime = isAnime(label) || isAnime(metadata);
+    final cartoon = isCartoon(label) || isCartoon(metadata);
+    final dorama = isDorama(label) || isDorama(metadata);
+
+    switch (widget.category) {
+      case AddonCategory.anime:
+        return anime || normalize(item.type) == 'anime';
+
+      case AddonCategory.cartoons:
+        return cartoon && !anime && !dorama;
+
+      case AddonCategory.doramas:
+        return dorama;
+
+      case AddonCategory.movies:
+        return isMovie(item.type) && !anime && !cartoon && !dorama;
+
+      case AddonCategory.series:
+        return isSeries(item.type) && !anime && !cartoon && !dorama;
+    }
+  }
+
+  Map<String, String>? catalogExtras(
+    StremioCatalog catalog,
+  ) {
+    final result = <String, String>{};
+
+    for (final extra in catalog.extra) {
+      if (!extra.isRequired) continue;
+
+      final key = normalize(extra.name);
+
+      // Catálogos de pesquisa precisam de um termo.
+      // Não fazemos pesquisas arbitrárias nesta tela.
+      if (key == 'search' || key == 'query' || key == 'q') {
+        return null;
+      }
+
+      // Só preenche automaticamente quando existe
+      // exatamente uma opção válida.
+      if (extra.options.length == 1) {
+        result[extra.name] = extra.options.first;
+      } else {
+        return null;
+      }
+    }
+
+    // Usa filtros de gênero quando disponíveis.
+    if (widget.category == AddonCategory.anime ||
+        widget.category == AddonCategory.cartoons) {
+      for (final extra in catalog.extra) {
+        if (normalize(extra.name) != 'genre') continue;
+
+        final wanted = widget.category == AddonCategory.anime
+            ? ['anime']
+            : ['animation', 'animacao', 'cartoon'];
+
+        for (final option in extra.options) {
+          if (hasAny(option, wanted)) {
+            result[extra.name] = option;
+            break;
+          }
+        }
+      }
+    }
+
+    return result;
+  }
+
+  Future<void> _load() async {
+    final currentGeneration = ++generation;
+
+    setState(() {
+      loading = true;
+      failures = 0;
+      checkedCatalogs = 0;
+      items.clear();
+      seen.clear();
+    });
+
+    try {
+      // Apenas addons instalados e ativados.
+      final installed = await addons.getInstalledAddons();
+
+      for (final addon in installed) {
+        if (!mounted || currentGeneration != generation) {
+          return;
+        }
+
+        StremioAddonManifest manifest;
+
+        try {
+          manifest = await addons.getManifest(addon);
+          debugPrint(
+              'MANIFEST OK: ${addon.name} - ${manifest.catalogs.length} catalogos');
+        } catch (_) {
+          failures++;
+          continue;
+        }
+
+        final relevant = manifest.catalogs
+            .where((catalog) => catalogIsRelevant(addon, catalog))
+            .toList();
+
+        // Prioriza catálogos especializados.
+        relevant.sort((a, b) {
+          int score(StremioCatalog catalog) {
+            final text = '${catalog.name} ${catalog.id}';
+
+            return switch (widget.category) {
+              AddonCategory.anime => isAnime(text) ? 0 : 1,
+              AddonCategory.cartoons => isCartoon(text) ? 0 : 1,
+              AddonCategory.doramas => isDorama(text) ? 0 : 1,
+              _ => 0,
+            };
+          }
+
+          return score(a).compareTo(score(b));
+        });
+
+        // Limita o volume inicial de requisições.
+        for (final catalog in relevant.take(6)) {
+          if (!mounted || currentGeneration != generation) {
+            return;
+          }
+
+          final extra = catalogExtras(catalog);
+
+          if (extra == null) continue;
+
+          checkedCatalogs++;
+
+          try {
+            final results = await catalogs.getCatalog(
+              addon: addon,
+              catalog: catalog,
+              extra: extra,
+            );
+
+            final batch = <_CatalogEntry>[];
+
+            for (final item in results.take(80)) {
+              if (!matches(addon, catalog, item)) {
+                continue;
+              }
+
+              final key = '${item.type}|${item.id}';
+
+              if (seen.add(key)) {
+                batch.add(
+                  _CatalogEntry(
+                    addon: addon,
+                    item: item,
+                  ),
+                );
+              }
+            }
+
+            if (batch.isNotEmpty &&
+                mounted &&
+                currentGeneration == generation) {
+              setState(() => items.addAll(batch));
+            }
+          } catch (_) {
+            failures++;
+          }
+        }
+      }
+    } catch (_) {
+      failures++;
+    } finally {
+      if (mounted && currentGeneration == generation) {
+        setState(() => loading = false);
+      }
+    }
+  }
+
+  Future<void> openDetails(_CatalogEntry entry) async {
+    var item = entry.item;
+
+    try {
+      final manifest = await addons.getManifest(entry.addon);
+
+      if (manifest.supportsResource(
+        'meta',
+        item.type,
+        item.id,
+      )) {
+        item = await catalogs.getMeta(
+          addon: entry.addon,
+          type: item.type,
+          id: item.id,
+          fallback: item,
+        );
+      }
+    } catch (_) {
+      // Mantém os metadados do catálogo.
+    }
+
+    if (!mounted) return;
+
+    final selectedItem = item;
+
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => StremioDetailsScreen(
+          item: selectedItem,
+          catalogAddon: entry.addon,
+          addonRepository: addons,
+          catalogRepository: catalogs,
+          streamRepository: streams,
+          streamAvailability: _hasStream(
+            selectedItem,
+          ),
+          onWatch: (context) => _showSources(context, selectedItem),
+        ),
+      ),
+    );
+  }
+
+  Future<bool> _hasStream(
+    StremioMetaItem item,
+  ) async {
+    try {
+      final installed = await addons.getInstalledAddons();
+
+      for (final addon in installed) {
+        try {
+          final manifest = await addons.getManifest(addon);
+          debugPrint(
+              'MANIFEST OK: ${addon.name} - ${manifest.catalogs.length} catalogos');
+
+          if (manifest.supportsResource(
+            'stream',
+            item.type,
+            item.id,
+          )) {
+            return true;
+          }
+        } catch (_) {
+          continue;
+        }
+      }
+    } catch (_) {
+      return false;
+    }
+
+    return false;
+  }
+
+  Future<void> _showSources(
+    BuildContext context,
+    StremioMetaItem item,
+  ) async {
+    try {
+      final installed = await addons.getInstalledAddons();
+
+      if (!context.mounted) return;
+
+      await showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        builder: (_) => StremioSourcesSheet(
+          item: item,
+          addons: installed,
+          repository: streams,
+        ),
+      );
+    } catch (error) {
+      if (!context.mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Falha ao consultar fontes: $error',
+          ),
+        ),
+      );
+    }
+  }
+
+  Widget buildPoster(StremioMetaItem item) {
+    final url = item.poster;
+
+    if (url == null || url.isEmpty) {
+      return const Center(
+        child: Icon(
+          Icons.movie_outlined,
+          color: cyan,
+          size: 42,
+        ),
+      );
+    }
+
+    return Image.network(
+      url,
+      fit: BoxFit.cover,
+      width: double.infinity,
+      cacheWidth: 320,
+      errorBuilder: (_, __, ___) => const Center(
+        child: Icon(
+          Icons.broken_image_outlined,
+          color: Colors.white54,
+        ),
+      ),
+    );
+  }
+
+  Widget buildCard(_CatalogEntry entry) {
+    return InkWell(
+      onTap: () => openDetails(entry),
+      borderRadius: BorderRadius.circular(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                width: double.infinity,
+                color: const Color(0xFF101C30),
+                child: buildPoster(entry.item),
+              ),
+            ),
+          ),
+          const SizedBox(height: 7),
+          Text(
+            entry.item.name,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          Text(
+            entry.addon.name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: cyan,
+              fontSize: 11,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: background,
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF0B1728),
+        foregroundColor: cyan,
+        title: Text(title),
+        actions: [
+          IconButton(
+            tooltip: 'Atualizar catálogos',
+            onPressed: loading ? null : _load,
+            icon: const Icon(Icons.refresh),
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
+          if (loading)
+            const LinearProgressIndicator(
+              color: cyan,
+              minHeight: 2,
+            ),
+          if (items.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                16,
+                12,
+                16,
+                4,
+              ),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  '${items.length} títulos encontrados'
+                  '${loading ? ' · carregando...' : ''}',
+                  style: const TextStyle(
+                    color: Colors.white70,
+                  ),
+                ),
+              ),
+            ),
+          Expanded(
+            child: items.isEmpty
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            loading ? Icons.sync : Icons.video_library_outlined,
+                            color: cyan,
+                            size: 52,
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            loading
+                                ? 'Buscando $title nos addons...'
+                                : 'Nenhum título encontrado em $title.',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                            ),
+                          ),
+                          if (!loading) ...[
+                            const SizedBox(height: 10),
+                            Text(
+                              'Catálogos consultados: '
+                              '$checkedCatalogs\n'
+                              'Falhas: $failures\n'
+                              'Confira se seus addons '
+                              'publicam catálogos '
+                              'compatíveis.',
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                color: Colors.white60,
+                              ),
+                            ),
+                            const SizedBox(height: 14),
+                            TextButton.icon(
+                              onPressed: _load,
+                              icon: const Icon(
+                                Icons.refresh,
+                              ),
+                              label: const Text(
+                                'Tentar novamente',
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  )
+                : GridView.builder(
+                    padding: const EdgeInsets.all(14),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 3,
+                      crossAxisSpacing: 10,
+                      mainAxisSpacing: 14,
+                      childAspectRatio: 0.48,
+                    ),
+                    itemCount: items.length,
+                    itemBuilder: (context, index) => buildCard(items[index]),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+}

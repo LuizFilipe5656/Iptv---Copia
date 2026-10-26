@@ -1,0 +1,11 @@
+{
+  "addons": [
+    {
+      "id": "exemplo-canais",
+      "name": "Addon de exemplo",
+      "version": "1.0.0",
+      "description": "Entrada demonstrativa do catálogo remoto de addons.",
+      "manifestUrl": "https://example.com/addons/exemplo-canais.json"
+    }
+  ]
+}

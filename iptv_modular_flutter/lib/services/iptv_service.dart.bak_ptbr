@@ -1,0 +1,60 @@
+import 'package:http/http.dart' as http;
+
+class IptvSource {
+  const IptvSource(this.name, this.url);
+  final String name;
+  final String url;
+}
+
+class IptvChannel {
+  const IptvChannel({required this.name, required this.url, required this.category, this.logo});
+  final String name;
+  final String url;
+  final String category;
+  final String? logo;
+}
+
+class IptvService {
+  static const sources = <IptvSource>[
+    IptvSource('Todos', 'https://iptv-org.github.io/iptv/index.m3u'),
+    IptvSource('Brasil', 'https://iptv-org.github.io/iptv/countries/br.m3u'),
+    IptvSource('Português', 'https://iptv-org.github.io/iptv/languages/por.m3u'),
+    IptvSource('Esportes', 'https://iptv-org.github.io/iptv/categories/sports.m3u'),
+    IptvSource('Filmes', 'https://iptv-org.github.io/iptv/categories/movies.m3u'),
+    IptvSource('Séries', 'https://iptv-org.github.io/iptv/categories/series.m3u'),
+    IptvSource('Infantil', 'https://iptv-org.github.io/iptv/categories/kids.m3u'),
+    IptvSource('Notícias', 'https://iptv-org.github.io/iptv/categories/news.m3u'),
+    IptvSource('Entretenimento', 'https://iptv-org.github.io/iptv/categories/entertainment.m3u'),
+    IptvSource('Documentários', 'https://iptv-org.github.io/iptv/categories/documentary.m3u'),
+    IptvSource('Música', 'https://iptv-org.github.io/iptv/categories/music.m3u'),
+    IptvSource('Animação', 'https://iptv-org.github.io/iptv/categories/animation.m3u'),
+  ];
+
+  Future<List<IptvChannel>> load(IptvSource source) async {
+    final response = await http.get(Uri.parse(source.url)).timeout(const Duration(seconds: 35));
+    if (response.statusCode != 200) throw Exception('Erro HTTP ${response.statusCode}');
+    return parse(response.body, source.name);
+  }
+
+  static List<IptvChannel> parse(String content, String category) {
+    final channels = <IptvChannel>[];
+    final seen = <String>{};
+    String? name, logo, group;
+    for (final raw in content.split(RegExp(r'\r?\n'))) {
+      final line = raw.trim();
+      if (line.startsWith('#EXTINF:')) {
+        final comma = line.indexOf(',');
+        name = comma >= 0 ? line.substring(comma + 1).trim() : 'Canal';
+        logo = RegExp('tvg-logo="([^"]*)"').firstMatch(line)?.group(1);
+        group = RegExp('group-title="([^"]*)"').firstMatch(line)?.group(1);
+      } else if (line.isNotEmpty && !line.startsWith('#')) {
+        final uri = Uri.tryParse(line);
+        if (name != null && uri != null && (uri.scheme == 'https' || uri.scheme == 'http') && seen.add(line)) {
+          channels.add(IptvChannel(name: name, url: line, logo: logo, category: group?.isNotEmpty == true ? group! : category));
+        }
+        name = null; logo = null; group = null;
+      }
+    }
+    return channels;
+  }
+}

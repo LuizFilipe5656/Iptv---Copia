@@ -1,0 +1,100 @@
+﻿C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\admin\admins\page.tsx:2: 'use client'
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\admin\admins\page.tsx:8: import { supabase } from '@/lib/supabase'
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\admin\admins\page.tsx:47:     const { data, error: fetchError } = await supabase
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\admin\admins\page.tsx:77:         await supabase.auth.getSession()
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\admin\admins\page.tsx:303:                       <th className="p-3">Status</th>
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\admin\admins\page.tsx:325:                           {reseller.status}
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\admin\page.tsx:2: 'use client'
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\admin\page.tsx:8: import { supabase } from '@/lib/supabase'
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\admin\page.tsx:56:     const { data, error: fetchError } = await supabase
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\admin\page.tsx:77:       await supabase.auth.getSession()
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\admin\page.tsx:279:             role="status"
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\admin\page.tsx:413:                       <th className="p-3">Status</th>
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\admin\page.tsx:439:                           {reseller.status}
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\admin\page.tsx:500:                                 reseller.status !== 'ACTIVE'
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\admin\resellers\route.ts:3: import { createClient } from '@supabase/supabase-js'
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\admin\resellers\route.ts:9:     const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\admin\resellers\route.ts:11:       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\admin\resellers\route.ts:12:       process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\admin\resellers\route.ts:13:     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\admin\resellers\route.ts:17:         { error: 'Supabase não configurado no servidor.' },
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\admin\resellers\route.ts:18:         { status: 500 }
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\admin\resellers\route.ts:31:         { status: 401 }
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\admin\resellers\route.ts:35:     const authClient = createClient(url, publicKey, {
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\admin\resellers\route.ts:45:     } = await authClient.auth.getUser(token)
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\admin\resellers\route.ts:50:         { status: 401 }
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\admin\resellers\route.ts:54:     // Este cliente é exclusivo do servidor.
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\admin\resellers\route.ts:55:     const adminClient = createClient(url, serviceKey, {
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\admin\resellers\route.ts:63:       await adminClient
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\admin\resellers\route.ts:65:         .select('id, role, status')
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\admin\resellers\route.ts:72:       master.status !== 'ACTIVE'
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\admin\resellers\route.ts:76:         { status: 403 }
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\admin\resellers\route.ts:87:         { status: 400 }
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\admin\resellers\route.ts:94:         { status: 400 }
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\admin\resellers\route.ts:130:         { status: 400 }
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\admin\resellers\route.ts:137:       await adminClient.auth.admin.createUser({
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\admin\resellers\route.ts:150:         { status: 400 }
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\admin\resellers\route.ts:159:       await adminClient
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\admin\resellers\route.ts:166:           status: 'ACTIVE',
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\admin\resellers\route.ts:177:         await adminClient.auth.admin.deleteUser(newUserId)
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\admin\resellers\route.ts:191:         { status: 500 }
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\admin\resellers\route.ts:195:     const { error: auditError } = await adminClient
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\admin\resellers\route.ts:217:         { status: 500 }
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\admin\resellers\route.ts:226:       { status: 201 }
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\admin\resellers\route.ts:233:       { status: 500 }
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\admin\resellers\route.ts:240:     const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\admin\resellers\route.ts:242:       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\admin\resellers\route.ts:243:       process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\admin\resellers\route.ts:244:     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\admin\resellers\route.ts:248:         { error: 'Supabase não configurado.' },
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\admin\resellers\route.ts:249:         { status: 500 }
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\admin\resellers\route.ts:261:         { status: 401 }
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\admin\resellers\route.ts:265:     const authClient = createClient(url, publicKey, {
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\admin\resellers\route.ts:275:     } = await authClient.auth.getUser(token)
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\admin\resellers\route.ts:280:         { status: 401 }
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\admin\resellers\route.ts:284:     const adminClient = createClient(url, serviceKey, {
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\admin\resellers\route.ts:292:       await adminClient
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\admin\resellers\route.ts:294:         .select('role, status')
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\admin\resellers\route.ts:301:       master.status !== 'ACTIVE'
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\admin\resellers\route.ts:305:         { status: 403 }
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\admin\resellers\route.ts:323:         { status: 400 }
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\admin\resellers\route.ts:328:       await adminClient.rpc(
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\admin\resellers\route.ts:339:         { status: 400 }
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\admin\resellers\route.ts:343:     const { error: auditError } = await adminClient
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\admin\resellers\route.ts:364:         { status: 500 }
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\admin\resellers\route.ts:377:       { status: 500 }
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\reseller\clients\route.ts:3: import { createClient, SupabaseClient } from '@supabase/supabase-js'
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\reseller\clients\route.ts:13: function jsonError(message: string, status: number) {
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\reseller\clients\route.ts:14:   return NextResponse.json({ error: message }, { status })
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\reseller\clients\route.ts:18:   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\reseller\clients\route.ts:21:     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\reseller\clients\route.ts:22:     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\reseller\clients\route.ts:24:   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\reseller\clients\route.ts:28:       error: jsonError('Supabase não configurado no servidor.', 500),
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\reseller\clients\route.ts:44:   const authClient = createClient(url, publicKey, {
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\reseller\clients\route.ts:54:   } = await authClient.auth.getUser(token)
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\reseller\clients\route.ts:62:   const adminClient = createClient(url, serviceKey, {
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\reseller\clients\route.ts:70:     await adminClient
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\reseller\clients\route.ts:72:       .select('id, role, status, credits')
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\reseller\clients\route.ts:79:     reseller.status !== 'ACTIVE'
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\reseller\clients\route.ts:90:     adminClient,
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\reseller\clients\route.ts:96: type AdminClient = SupabaseClient
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\reseller\clients\route.ts:99:   adminClient: AdminClient,
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\reseller\clients\route.ts:102:   return adminClient
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\reseller\clients\route.ts:103:     .from('reseller_client_operations')
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\reseller\clients\route.ts:105:       'request_id, reseller_id, client_email, client_id, auth_user_id, status, credit_charged'
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\reseller\clients\route.ts:111: // GET - Consultar clientes do revendedor
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\reseller\clients\route.ts:118:     const { adminClient, requester, reseller } = context
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\reseller\clients\route.ts:120:     const { data: clients, error } = await adminClient
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\reseller\clients\route.ts:123:         'id, name, email, plan, expiration_date, status, created_at'
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\reseller\clients\route.ts:130:       console.error('Erro ao consultar clientes:', error)
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\reseller\clients\route.ts:133:         'Não foi possível consultar os clientes.',
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\reseller\clients\route.ts:139:       clients: clients || [],
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\reseller\clients\route.ts:143:     console.error('Erro no GET de clientes:', error)
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\reseller\clients\route.ts:149: // POST - Criar cliente com reserva de crédito
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\reseller\clients\route.ts:156:     const { adminClient, requester } = context
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\reseller\clients\route.ts:217:       await getOperation(adminClient, requestId)
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\reseller\clients\route.ts:234:         existing.client_email !== email
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\reseller\clients\route.ts:242:       if (existing.status === 'COMPLETED') {
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\reseller\clients\route.ts:244:           status: 'COMPLETED',
+C:\Users\Fredson\Documents\Iptv\cine-mobile-admin\src\app\api\reseller\clients\route.ts:245:           clientId: existing.client_id,

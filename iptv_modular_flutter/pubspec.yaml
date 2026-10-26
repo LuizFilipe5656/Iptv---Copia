@@ -1,0 +1,45 @@
+name: iptv_modular_flutter
+description: Plataforma multiplataforma de filmes e séries em Flutter
+publish_to: 'none'
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  provider: ^6.1.2
+
+  http: ^1.2.2
+  crypto: ^3.0.7
+  supabase_flutter: ^2.5.0
+
+  better_player: ^1.24.0
+
+  sqflite: ^2.3.3
+
+  path_provider: ^2.1.4
+
+  cached_network_image: ^3.4.1
+
+  carousel_slider: ^5.0.0
+
+  shared_preferences: ^2.3.2
+  package_info_plus: ^10.2.2
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
+  url_launcher: ^6.3.3
+  file_picker: ^13.1.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/default_addons.json
+    - assets/cine_mobile_icon.png
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0

@@ -1,0 +1,212 @@
+import 'dart:convert';
+import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
+import '../models/stremio_meta_item.dart';
+
+class ExternalEpisodeService {
+  static final Map<String, List<Map<String, dynamic>>> _cache = {};
+  static Future<StremioMetaItem> enrich(StremioMetaItem item) async {
+    final id = item.id;
+    if (!id.startsWith('tvmaze:') && !id.startsWith('mal:')) {
+      return item;
+    }
+    try {
+      final videos = _cache[id] ??
+          (id.startsWith('tvmaze:')
+              ? await _loadTvmaze(id)
+              : await _loadAniList(id));
+      if (videos.isEmpty) {
+        debugPrint('[external-episodes] Nenhum episodio: $id');
+        return item;
+      }
+      _cache[id] = videos;
+      debugPrint(
+        '[external-episodes] $id: ${videos.length} episodios carregados',
+      );
+      return StremioMetaItem.fromJson({
+        ...item.raw,
+        'id': item.id,
+        'type': item.type,
+        'name': item.name,
+        'videos': videos,
+      });
+    } catch (error) {
+      debugPrint('[external-episodes] Erro em $id: $error');
+      return item;
+    }
+  }
+
+  static Future<List<Map<String, dynamic>>> _loadTvmaze(String id) async {
+    final number = int.tryParse(id.substring('tvmaze:'.length));
+    if (number == null) return [];
+    final response = await http
+        .get(Uri.parse('https://api.tvmaze.com/shows/$number/episodes'))
+        .timeout(const Duration(seconds: 15));
+    if (response.statusCode != 200) {
+      throw Exception('TVmaze HTTP ${response.statusCode}');
+    }
+    final decoded = jsonDecode(response.body);
+    if (decoded is! List) return [];
+    final videos = <Map<String, dynamic>>[];
+    for (final value in decoded) {
+      if (value is! Map) continue;
+      final data = Map<String, dynamic>.from(value);
+      final season = data['season'];
+      final episode = data['number'];
+      if (season is! num || episode is! num) continue;
+      final episodeId = data['id']?.toString();
+      if (episodeId == null || episodeId.isEmpty) continue;
+      final image = data['image'];
+      String? thumbnail;
+      if (image is Map) {
+        thumbnail =
+            image['medium']?.toString() ?? image['original']?.toString();
+      }
+      final title = data['name']?.toString().trim();
+      videos.add({
+        'id': 'tvmaze-episode:$episodeId',
+        'title': title == null || title.isEmpty
+            ? 'Episodio ${episode.toInt()}'
+            : title,
+        'season': season.toInt(),
+        'episode': episode.toInt(),
+        'overview': _removeHtml(data['summary']?.toString() ?? ''),
+        if (thumbnail != null) 'thumbnail': thumbnail,
+        if (data['runtime'] != null) 'runtime': data['runtime'].toString(),
+      });
+    }
+    videos.sort(_compareEpisodes);
+    return videos;
+  }
+
+  static Future<List<Map<String, dynamic>>> _loadAniList(String id) async {
+    final malId = int.tryParse(id.substring('mal:'.length));
+    if (malId == null) return [];
+    final query = r'''
+      query ($id: Int) {
+        Media(idMal: $id, type: ANIME) {
+          id
+          episodes
+          status
+          title {
+            romaji
+          }
+        }
+      }
+    ''';
+    final response = await http
+        .post(
+          Uri.parse('https://graphql.anilist.co'),
+          headers: const {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+          body: jsonEncode({
+            'query': query,
+            'variables': {'id': malId},
+          }),
+        )
+        .timeout(const Duration(seconds: 12));
+    if (response.statusCode != 200) {
+      throw Exception('AniList HTTP ${response.statusCode}');
+    }
+    final decoded = jsonDecode(response.body);
+    if (decoded is! Map) return [];
+    final data = decoded['data'];
+    if (data is! Map) return [];
+    final media = data['Media'];
+    if (media is! Map) return [];
+    final count = media['episodes'];
+    if (count is! num || count.toInt() <= 0) {
+      debugPrint(
+        '[external-episodes] AniList sem contagem de episodios: $id',
+      );
+      return [];
+    }
+    final total = count.toInt();
+    debugPrint(
+      '[external-episodes] AniList $id: $total episodios informados',
+    );
+    return List<Map<String, dynamic>>.generate(
+      total,
+      (index) {
+        final episode = index + 1;
+        return {
+          'id': 'mal:$malId:$episode',
+          'title': 'Episodio $episode',
+          'season': 1,
+          'episode': episode,
+        };
+      },
+    );
+  }
+
+  static Future<List<Map<String, dynamic>>> _loadJikan(String id) async {
+    final number = int.tryParse(id.substring('mal:'.length));
+    if (number == null) return [];
+    final videos = <Map<String, dynamic>>[];
+    var page = 1;
+    var hasNextPage = true;
+    // Limite defensivo para evitar requisicoes sem fim.
+    while (hasNextPage && page <= 20) {
+      final uri = Uri.parse(
+        'https://api.jikan.moe/v4/anime/$number/episodes?page=$page',
+      );
+      final response = await http.get(uri).timeout(const Duration(seconds: 15));
+      if (response.statusCode != 200) {
+        throw Exception('Jikan HTTP ${response.statusCode}, pagina $page');
+      }
+      final decoded = jsonDecode(response.body);
+      if (decoded is! Map) break;
+      final entries = decoded['data'];
+      if (entries is! List) break;
+      for (final value in entries) {
+        if (value is! Map) continue;
+        final data = Map<String, dynamic>.from(value);
+        final episode = data['mal_id'];
+        if (episode is! num || episode.toInt() <= 0) continue;
+        final title = data['title']?.toString().trim();
+        final alternative = data['title_japanese']?.toString().trim();
+        videos.add({
+          'id': 'mal:$number:${episode.toInt()}',
+          'title': title != null && title.isNotEmpty
+              ? title
+              : alternative != null && alternative.isNotEmpty
+                  ? alternative
+                  : 'Episodio ${episode.toInt()}',
+          'season': 1,
+          'episode': episode.toInt(),
+          'overview': data['synopsis']?.toString() ?? '',
+        });
+      }
+      final pagination = decoded['pagination'];
+      hasNextPage = pagination is Map && pagination['has_next_page'] == true;
+      page++;
+      if (hasNextPage) {
+        await Future<void>.delayed(
+          const Duration(milliseconds: 1200),
+        );
+      }
+    }
+    videos.sort(_compareEpisodes);
+    return videos;
+  }
+
+  static int _compareEpisodes(
+    Map<String, dynamic> a,
+    Map<String, dynamic> b,
+  ) {
+    final seasonA = a['season'] as int;
+    final seasonB = b['season'] as int;
+    final seasonOrder = seasonA.compareTo(seasonB);
+    if (seasonOrder != 0) return seasonOrder;
+    return (a['episode'] as int).compareTo(b['episode'] as int);
+  }
+
+  static String _removeHtml(String text) {
+    return text
+        .replaceAll(RegExp(r'<[^>]*>'), ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+  }
+}

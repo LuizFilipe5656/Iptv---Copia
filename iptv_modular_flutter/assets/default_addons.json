@@ -1,0 +1,93 @@
+[
+  {
+    "id": "cinemeta",
+    "name": "Cinemeta",
+    "manifestUrl": "https://v3-cinemeta.strem.io/manifest.json",
+    "fixed": true,
+    "enabled": true
+  },
+  {
+    "id": "youtube",
+    "name": "YouTube",
+    "manifestUrl": "https://v3-channels.strem.io/manifest.json",
+    "fixed": true,
+    "enabled": true
+  },
+  {
+    "id": "public_domain_movies",
+    "name": "Public Domain Movies",
+    "manifestUrl": "https://caching.stremio.net/publicdomainmovies.now.sh/manifest.json",
+    "fixed": true,
+    "enabled": true
+  },
+  {
+    "id": "opensubtitles_v3",
+    "name": "Open Subtitles V3",
+    "manifestUrl": "https://opensubtitles-v3.strem.io/manifest.json",
+    "fixed": true,
+    "enabled": true
+  },
+  {
+    "id": "froststream",
+    "name": "FrostStream",
+    "manifestUrl": "https://froststream.cloutteam.com/manifest.json",
+    "fixed": true,
+    "enabled": true
+  },
+  {
+    "id": "fenixflix",
+    "name": "FenixFlix",
+    "manifestUrl": "https://fenixflix.fenixhub.online/qualities=4k,1080p,720p,sd%7Caudio=dublado,legendado%7Ccatalogs=populares_movie,populares_series,recentes_movie,recentes_series/manifest.json",
+    "fixed": true,
+    "enabled": true
+  },
+  {
+    "id": "comet.elfhosted.com",
+    "name": "Comet | ElfHosted",
+    "manifestUrl": "https://comet.elfhosted.com/manifest.json",
+    "fixed": true,
+    "enabled": true
+  },
+  {
+    "id": "pw.ers.netflix-catalog",
+    "name": "Streaming Catalogs",
+    "manifestUrl": "https://7a82163c306e-stremio-netflix-catalog-addon.baby-beamup.club/manifest.json",
+    "fixed": true,
+    "enabled": true
+  },
+  {
+    "id": "tmdb-addon",
+    "name": "The Movie Database Addon",
+    "manifestUrl": "https://94c8cb9f702d-tmdb-addon.baby-beamup.club/manifest.json",
+    "fixed": true,
+    "enabled": true
+  },
+  {
+    "id": "marvel-addon",
+    "name": "Marvel",
+    "manifestUrl": "https://addon-marvel.gonp.deno.net/manifest.json",
+    "fixed": true,
+    "enabled": true
+  },
+  {
+    "id": "aiometadata",
+    "name": "Metadados AIO",
+    "manifestUrl": "https://aiometadata.elfhosted.com/stremio/manifest.json",
+    "fixed": true,
+    "enabled": true
+  },
+  {
+    "id": "scplus",
+    "name": "Catálogos de Streaming Plus",
+    "manifestUrl": "https://scplus.duckdns.org/manifest.json",
+    "fixed": true,
+    "enabled": true
+  },
+  {
+    "id": "streamasia",
+    "name": "StreamAsia",
+    "manifestUrl": "https://stremio-dramacool-addon.xyz/manifest.json",
+    "fixed": true,
+    "enabled": true
+  }
+]

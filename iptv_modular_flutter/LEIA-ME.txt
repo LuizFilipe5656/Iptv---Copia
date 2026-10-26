@@ -1,0 +1,17 @@
+CINE MOBILE - ATIVAR CADASTRO
+
+1) Faça backup de lib/screens/admin_create_user_screen.dart
+2) Copie a pasta lib do ZIP para a raiz do projeto Flutter.
+3) Copie supabase/functions/create-account/index.ts para a mesma estrutura no projeto.
+4) Na raiz do projeto: supabase functions deploy create-account
+   NÃO use --no-verify-jwt nesta função: exige sessão autenticada.
+5) Rode flutter analyze e flutter run -d edge; teste primeiro com super_admin.
+
+IMPORTANTE:
+- A Edge Function usa SUPABASE_SERVICE_ROLE_KEY SOMENTE no servidor.
+- Confirme que existe índice UNIQUE para username (idealmente lower(trim(username))).
+- Esta versão permite super_admin criar user/reseller; reseller criar apenas user.
+- Não altera auth_service.dart, nem permissões das contas existentes.
+- A função usa email_confirm:true para permitir login imediato. Avalie a política de verificação de e-mail do seu serviço antes de produção.
+- Caso haja triggers de cadastro, confirme que eles não alteram role/status depois do upsert.
+- Teste com uma conta de teste antes de criar clientes reais.

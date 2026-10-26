@@ -1,0 +1,279 @@
+
+import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
+
+export const runtime = 'nodejs'
+
+// GET - Consultar clientes do revendedor
+export async function GET(request: NextRequest) {
+  try {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+
+    const publicKey =
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+    if (!url || !publicKey || !serviceKey) {
+      return NextResponse.json(
+        { error: 'Supabase não configurado no servidor.' },
+        { status: 500 }
+      )
+    }
+
+    const authorization = request.headers.get('authorization')
+
+    const token = authorization?.startsWith('Bearer ')
+      ? authorization.slice(7)
+      : null
+
+    if (!token) {
+      return NextResponse.json(
+        { error: 'Sessão não informada.' },
+        { status: 401 }
+      )
+    }
+
+    const authClient = createClient(url, publicKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      },
+    })
+
+    const {
+      data: { user: requester },
+      error: authError,
+    } = await authClient.auth.getUser(token)
+
+    if (authError || !requester) {
+      return NextResponse.json(
+        { error: 'Sessão inválida.' },
+        { status: 401 }
+      )
+    }
+
+    const adminClient = createClient(url, serviceKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      },
+    })
+
+    const { data: reseller, error: resellerError } =
+      await adminClient
+        .from('users')
+        .select('id, role, status, credits')
+        .eq('id', requester.id)
+        .single()
+
+    if (
+      resellerError ||
+      reseller?.role !== 'reseller' ||
+      reseller.status !== 'ACTIVE'
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            'Acesso permitido somente a revendedores ativos.',
+        },
+        { status: 403 }
+      )
+    }
+
+    const { data: clients, error: clientsError } =
+      await adminClient
+        .from('users')
+        .select(
+          'id, name, email, plan, expiration_date, status, created_at'
+        )
+        .eq('created_by', requester.id)
+        .eq('role', 'user')
+        .order('created_at', { ascending: false })
+
+    if (clientsError) {
+      console.error('Erro ao consultar clientes:', clientsError)
+
+      return NextResponse.json(
+        { error: 'Não foi possível consultar os clientes.' },
+        { status: 500 }
+      )
+    }
+
+    return NextResponse.json({
+      clients: clients || [],
+      credits: reseller.credits,
+    })
+  } catch (error) {
+    console.error('Erro na API de clientes:', error)
+
+    return NextResponse.json(
+      { error: 'Erro interno do servidor.' },
+      { status: 500 }
+    )
+  }
+}
+
+// POST - Validar cadastro e consultar operações existentes
+export async function POST(request: NextRequest) {
+  try {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+
+    const publicKey =
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+    if (!url || !publicKey || !serviceKey) {
+      return NextResponse.json(
+        { error: 'Supabase não configurado no servidor.' },
+        { status: 500 }
+      )
+    }
+
+    const authorization = request.headers.get('authorization')
+
+    const token = authorization?.startsWith('Bearer ')
+      ? authorization.slice(7)
+      : null
+
+    if (!token) {
+      return NextResponse.json(
+        { error: 'Sessão não informada.' },
+        { status: 401 }
+      )
+    }
+
+    const authClient = createClient(url, publicKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      },
+    })
+
+    const {
+      data: { user: requester },
+      error: authError,
+    } = await authClient.auth.getUser(token)
+
+    if (authError || !requester) {
+      return NextResponse.json(
+        { error: 'Sessão inválida.' },
+        { status: 401 }
+      )
+    }
+
+    const adminClient = createClient(url, serviceKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      },
+    })
+
+    const { data: reseller, error: resellerError } =
+      await adminClient
+        .from('users')
+        .select('id, role, status')
+        .eq('id', requester.id)
+        .single()
+
+    if (
+      resellerError ||
+      reseller?.role !== 'reseller' ||
+      reseller.status !== 'ACTIVE'
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            'Acesso permitido somente a revendedores ativos.',
+        },
+        { status: 403 }
+      )
+    }
+
+    const body = await request.json()
+
+    const requestId =
+      typeof body?.requestId === 'string'
+        ? body.requestId.trim()
+        : ''
+
+    const email =
+      typeof body?.email === 'string'
+        ? body.email.trim().toLowerCase()
+        : ''
+
+    const uuidPattern =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
+    const emailPattern =
+      /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+    if (
+      !uuidPattern.test(requestId) ||
+      !emailPattern.test(email)
+    ) {
+      return NextResponse.json(
+        { error: 'Identificador ou e-mail inválido.' },
+        { status: 400 }
+      )
+    }
+
+    const { data: operation, error: operationError } =
+      await adminClient
+        .from('reseller_client_operations')
+        .select(
+          'request_id, reseller_id, client_email, client_id, auth_user_id, status, credit_charged'
+        )
+        .eq('request_id', requestId)
+        .maybeSingle()
+
+    if (operationError) {
+      console.error(
+        'Erro ao consultar operação:',
+        operationError
+      )
+
+      return NextResponse.json(
+        { error: 'Não foi possível consultar a operação.' },
+        { status: 500 }
+      )
+    }
+
+    if (operation) {
+      if (
+        operation.reseller_id !== requester.id ||
+        operation.client_email !== email
+      ) {
+        return NextResponse.json(
+          { error: 'Identificador de operação já utilizado.' },
+          { status: 409 }
+        )
+      }
+
+      return NextResponse.json({
+        status: operation.status,
+        clientId: operation.client_id,
+        message: 'Operação existente localizada.',
+      })
+    }
+
+    return NextResponse.json(
+      {
+        status: 'NOT_STARTED',
+        message:
+          'Validação concluída. Cadastro ainda não executado.',
+      },
+      { status: 200 }
+    )
+  } catch (error) {
+    console.error('Erro na API de cadastro:', error)
+
+    return NextResponse.json(
+      { error: 'Erro interno do servidor.' },
+      { status: 500 }
+    )
+  }
+}
